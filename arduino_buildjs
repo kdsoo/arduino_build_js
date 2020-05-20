@@ -1,0 +1,148 @@
+#!/usr/bin/env node
+/*
+ * Project build script
+ * works for only single ino file project
+ * Nathaniel Kim<dongsoo.kim@gmail.com>
+ */
+
+// command sample:
+// arduino -v --board esp8266:esp8266:nodemcuv2 --pref build.path=$PRJ_PATH/build --verify $PRJ_PATH/smartfarm_controlserver.ino
+
+var path = require("path");
+var spawn = require("child_process").spawn;
+var fs = require('fs');
+var rl = require("readline");
+
+if (process.argv.length != 3) {
+	console.error("Please specify project directory as argument");
+	process.exit();
+}
+
+var project_path = "";
+if (process.argv[2] == ".") {
+	project_path = process.cwd();
+} else {
+	if (!fs.existsSync(process.argv[2])) {
+		console.error(process.argv[2], "Project directory does not exists");
+		process.exit();
+	} else {
+		project_path = process.argv[2];
+	}
+}
+
+var project_name = path.basename(path.resolve(process.cwd()));
+var build_dir = path.join(project_path, "build");
+var firmware_name = project_name + ".ino.bin";
+var release_dir = path.join(project_path, "release");
+console.log("project_path", "	", project_path);
+console.log("project_name", "	", project_name);
+console.log("build_dir", "	", build_dir);
+console.log("firmware_name", "	", firmware_name);
+console.log("release_dir", "	", release_dir);
+
+var board = false;
+var board_def = "board.def";
+if (!fs.existsSync(board_def)) {
+	console.error("Please place your board.def file in project directory");
+	process.exit();
+} else {
+	board = fs.readFileSync(board_def, "utf8");
+	board = board.trim();
+	console.log("Project", project_name, "H/W platform is", board);
+}
+
+if (!fs.existsSync(build_dir)) {
+	console.log("build directory doesn't exists. creating one");
+	fs.mkdirSync(build_dir);
+}
+
+function find_ino() {
+	var ret = [];
+	var EXTENSION = 'ino';
+	files = fs.readdirSync(project_path);
+	for (var i = 0; i < files.length; i++) {
+		var arr = files[i].split(".");
+		if (arr[arr.length - 1].toLowerCase() == EXTENSION)
+			ret.push(files[i]);
+	}
+	if (ret.length != 1) {
+		console.error("Can handle only single ino file");
+		return false;
+	} else {
+		return ret[0];
+	}
+}
+
+function parse_err(no) {
+	switch(no) {
+		case 0:
+			console.log("Build success");
+			break;
+		case 1:
+			console.log("Build failed or upload failed");
+			break;
+		case 2:
+			console.log("Sketch not found");
+			break;
+		case 3:
+			console.log("Invalid (argument for) commandline option");
+			break;
+		case 4:
+			console.log("Preference passed to --get-pref does not exist");
+			break;
+		default:
+			console.log("error number", no, "unknown");
+			break;
+	}
+}
+
+function fw_export() {
+	if (!fs.existsSync(release_dir)) {
+		fs.mkdirSync(release_dir);
+	}
+	if (!fs.existsSync(release_dir)) {
+		fs.unlinkSync(path.join(release_dir, firmware_name));
+		console.log("Removing old firmware done", ret);
+	}
+	try {
+		fs.copyFileSync(path.join(build_dir, firmware_name), path.join(release_dir, firmware_name));
+		console.log("Firmware release done in", path.join(release_dir, firmware_name));
+	} catch(e) {
+		console.error("Firmware export error", e);
+	}
+}
+
+function build(ino) {
+	var buildpath = "build.path=" + build_dir;
+	var inopath = path.join(project_path, ino);
+	var options = ["-v", "--board", board, "--pref", buildpath, "--verify", inopath];
+	var build = spawn("arduino", options);
+	//console.log("arduino", options);
+	build.stderr.on("data", function(data) {
+		console.error(data.toString().trim());
+	});
+	build.stdout.on("data", function(data) {
+		//console.log("build stdout:", data.toString());
+	});
+	build.stdout.on("end", function() {
+	});
+	build.on("exit", function(code) {
+		parse_err(code);
+		if (code == 0) {
+			// console.log("Firmware file located:", path.join(build_dir, firmware_name));
+			fw_export();
+		}
+	});
+
+}
+
+function start_build() {
+	var src = find_ino();
+	if (src) {
+		build(src);
+	} else {
+		console.error("Support only single ino project");
+	}
+}
+
+start_build();
