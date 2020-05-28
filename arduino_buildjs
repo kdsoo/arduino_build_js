@@ -56,6 +56,25 @@ if (!fs.existsSync(build_dir)) {
 	fs.mkdirSync(build_dir);
 }
 
+function get_version(cb) {
+	// git describe --tags --always --dirty
+	var options = ["describe", "--tags", "--always", "--dirty"];
+	var git = spawn("git", options);
+	var hash = false;
+	git.stderr.on("data", function(data) {
+		console.error("git error:", data.toString());
+		cb(false, null);
+	});
+	git.stdout.on("data", function(data) {
+		hash = data.toString().trim();
+		cb(null, hash);
+	});
+	git.stdout.on("end", function() {
+	});
+	git.on("exit", function(code) {
+	});
+}
+
 function find_ino() {
 	var ret = [];
 	var EXTENSION = 'ino';
@@ -122,7 +141,7 @@ function build(ino) {
 		console.error(data.toString().trim());
 	});
 	build.stdout.on("data", function(data) {
-		//console.log("build stdout:", data.toString());
+		//console.log(data.toString());
 	});
 	build.stdout.on("end", function() {
 	});
@@ -137,12 +156,24 @@ function build(ino) {
 }
 
 function start_build() {
-	var src = find_ino();
-	if (src) {
-		build(src);
-	} else {
-		console.error("Support only single ino project");
-	}
+	get_version(function(err, ret) {
+		var version = "none";
+		var timestamp = new Date()
+		timestamp = timestamp.toString();
+		if (err) {
+			console.error(err, "wrong repo");
+		} else {
+			console.log("project version:", ret);
+			version = ret;
+		}
+		fs.writeFileSync("git_version.h", "#define VERSION_HASH \"" + version + "\"\n" + "#define BUILD_TIME \"" + timestamp + "\"");
+		var src = find_ino();
+		if (src) {
+			build(src);
+		} else {
+			console.error("Support only single ino project");
+		}
+	});
 }
 
 start_build();
