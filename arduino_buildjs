@@ -8,6 +8,7 @@
 // command sample:
 // arduino -v --board esp8266:esp8266:nodemcuv2 --pref build.path=$PRJ_PATH/build --verify $PRJ_PATH/smartfarm_controlserver.ino
 
+var os = require('os');
 var path = require("path");
 var spawn = require("child_process").spawn;
 var fs = require('fs');
@@ -160,13 +161,14 @@ function start_build() {
 		var version = "none";
 		var timestamp = new Date()
 		timestamp = timestamp.toString();
+		var hostname = os.hostname();
 		if (err) {
 			console.error(err, "wrong repo");
 		} else {
 			console.log("project version:", ret);
 			version = ret;
 		}
-		fs.writeFileSync("git_version.h", "#define VERSION_HASH \"" + version + "\"\n" + "#define BUILD_TIME \"" + timestamp + "\"");
+		fs.writeFileSync("git_version.h", "#define VERSION_HASH \"" + version + "\"\n" + "#define BUILD_TIME \"" + timestamp + "\"\n" + "#define BUILD_HOST \"" + hostname + "\"");
 		var src = find_ino();
 		if (src) {
 			build(src);
