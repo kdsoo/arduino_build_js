@@ -58,7 +58,7 @@ if (!fs.existsSync(build_dir)) {
 
 function get_version(cb) {
 	// git describe --tags --always --dirty
-	var options = ["describe", "--tags", "--always", "--dirty"];
+	var options = ["describe", "--tags", "--long", "--always", "--dirty"];
 	var git = spawn("git", options);
 	var hash = false;
 	git.stderr.on("data", function(data) {
