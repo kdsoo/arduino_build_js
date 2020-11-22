@@ -5,6 +5,7 @@
  * Nathaniel Kim<dongsoo.kim@gmail.com>
  */
 
+// https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc
 // command sample:
 // arduino -v --board esp8266:esp8266:nodemcuv2 --pref build.path=$PRJ_PATH/build --verify $PRJ_PATH/smartfarm_controlserver.ino
 
@@ -13,6 +14,8 @@ var path = require("path");
 var spawn = require("child_process").spawn;
 var fs = require('fs');
 var rl = require("readline");
+var config = require('config');
+//var isCli = config.get("builder.arduino-cli");
 
 if (process.argv.length != 3) {
 	console.error("Please specify project directory as argument");
@@ -42,6 +45,7 @@ console.log("firmware_name", "	", firmware_name);
 console.log("release_dir", "	", release_dir);
 
 var board = false;
+var platform = "";
 var board_def = "board.def";
 if (!fs.existsSync(board_def)) {
 	console.error("Please place your board.def file in project directory");
@@ -49,7 +53,19 @@ if (!fs.existsSync(board_def)) {
 } else {
 	board = fs.readFileSync(board_def, "utf8");
 	board = board.trim();
-	console.log("Project", project_name, "H/W platform is", board);
+	var arr = board.split(":");
+	if (arr.length > 1) {
+			for (var i = 0; i < arr.length; i++) {
+						platform += arr[i];
+						if (i == arr.length -2)
+								break;
+						else
+								platform += ":";
+					}
+	} else {
+			platform = board;
+	}
+	console.log("Project", project_name, "H/W platform is", platform, "Board name is", board);
 }
 
 if (!fs.existsSync(build_dir)) {
